@@ -1,0 +1,103 @@
+activeDirectory:
+  # https://devsmittestopp.b2clogin.com/devsmittestopp.onmicrosoft.com/discovery/v2.0/keys?p=b2c_1a_phone_susi
+  jwksJson: |
+    {
+      "keys": [
+        {"kid":"","use":"sig","kty":"RSA","e":"AQAB","n":""}
+      ]
+    }
+
+onboarding:
+  image: acrsmittestoppdev.azurecr.io/smittestopp/corona:latest
+  imagePullPolicy: Always
+
+  extraEnv:
+    PIN_ENABLED: "1"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 50
+
+  pdb:
+    minAvailable: 1
+
+  resources:
+    requests:
+      memory: 256M
+      cpu: "100m"
+
+  ingress:
+    enabled: true
+    hosts:
+      - onboarding.dev.corona.nntb.no
+      - onboarding.staging.corona.nntb.no
+
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+fhi:
+  image: acrsmittestoppdev.azurecr.io/smittestopp/corona:latest
+  imagePullPolicy: Always
+
+  extraEnv:
+    JWKS_URL: "https://eksternapi.hn.test.nhn.no/sts/helsenorge-oidc-provider/v2/jwk"
+    JWT_AUDIENCE: "fhi"
+    PIN_ENABLED: "1"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 1
+    targetCPU: 40
+
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+cert-manager:
+  webhook:
+    serviceName: corona-dev-cert-manager-webhook
+
+
+analysis:
+  image: acrsmittestoppdev.azurecr.io/smittestopp/analysis:latest
+  imagePullPolicy: Always
+  extraEnv:
+    PIN_TIME_TO: "2020-04-16T12:00:00Z"
+    CORONA_OVERPASS_ENDPOINT: "https://osmoverp.dev.corona.nntb.no:8888/api/"
+    CORONA_NOMINATIM_ENDPOINT: "https://osmnomi.dev.corona.nntb.no:8888/nominatim/"
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPU: 55
+
+delete:
+  idleUsers:
+    dryRun: true
+  schedule: "0 22 * * *"
+  image: acrsmittestoppdev.azurecr.io/smittestopp/delete:latest
+  imagePullPolicy: Always
+  activeDeadlineSeconds: 3600
+  extraEnv:
+    MAX_FAILURES: "32"
+    AZURE_STORAGE_ENDPOINT: https://stsmittestoppdev.dfs.core.windows.net
+    AZURE_STORAGE_FILESYSTEM: dfs-smittestopp-dev-raw
+    IOTHUB_DATA_DIR: iot-smittestopp-dev-json
+    DEBUG_OBJGRAPH: "1"
+    PERSISTENT_CHECK_DB: "1"
+
+
+  jobs:
+    db:
+      extraEnv:
+        IDLE_CUTOFF_DAYS: "1825"
+        DATA_LAKE_DAYS: "1825"
+    markTestUsers:
+      extraEnv:
+        CONCURRENCY: "4"

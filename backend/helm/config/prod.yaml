@@ -1,0 +1,137 @@
+activeDirectory:
+  # https://smittestopp.b2clogin.com/smittestopp.onmicrosoft.com/discovery/v2.0/keys?p=b2c_1a_phone_susi
+  jwksJson: |
+    {
+      "keys": [
+        {"kid":"","use":"sig","kty":"RSA","e":"AQAB","n":""}
+      ]
+    }
+
+onboarding:
+  replicas: 0
+  extraEnv:
+    IOTHUB_CLIENT_THREADS: "32"
+    CONSECUTIVE_FAILURE_LIMIT: "12"
+  autoscaling:
+    enabled: false
+    minReplicas: 8
+    maxReplicas: 40
+    targetCPU: 40
+  image: acrsmittestoppprod.azurecr.io/smittestopp/corona:2020-04-28T19.42.ca23e231
+
+  pdb:
+    minAvailable: 4
+
+  resources:
+    requests:
+      memory: 256M
+      cpu: "250m"
+    limits:
+      cpu: "1"
+      memory: 500M
+
+fhi:
+  image: acrsmittestoppprod.azurecr.io/smittestopp/fhi:2020-05-27T12.00.05bc408b6
+  # override command while we are still using old fhi image
+  command:
+    - python3
+    - -m
+    - corona_fhi.app
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 16
+    targetCPU: 40
+
+  pdb:
+    minAvailable: 1
+
+  extraEnv:
+    JWKS_URL: "https://eksternapi.helsenorge.no/sts/helsenorge-oidc-provider/v2/jwk"
+    JWT_AUDIENCE: "fhi"
+    DB_THREADS: "16"
+    LOOKUP_RESULT_EXPIRY: "43200"  # 12 hours
+
+  resources:
+    requests:
+      memory: 400M
+      cpu: "400m"
+    limits:
+      cpu: "1"
+      memory: 1500M
+
+analysis:
+  image: acrsmittestoppprod.azurecr.io/smittestopp/analysis:2020-06-15T17.58.46a067188e
+  resources:
+    requests:
+      cpu: 200m
+      memory: 4G
+    limits:
+      cpu: "2"
+      memory: 8G
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 16
+    targetCPU: 50
+  extraEnv:
+    CORONA_OVERPASS_ENDPOINT: "https://osmoverp.prod.corona.nntb.no:8888/api/"
+    CORONA_NOMINATIM_ENDPOINT: "https://osmnomi.prod.corona.nntb.no:8888/nominatim/"
+    SQL_CONNECT_RETRIES:  "5"
+
+
+delete:
+  enabled: false
+  image: acrsmittestoppprod.azurecr.io/smittestopp/delete:2020-05-28T11.31.f176919dc
+  # run from 23-04 (21-02 UTC)
+  schedule: "0 21 * * *"
+  activeDeadlineSeconds: 18000  # 5 hours
+  extraEnv:
+    CONCURRENCY: "20"
+    MAX_FAILURES: "128"
+    AZURE_STORAGE_ENDPOINT: https://stsmittestoppprod.dfs.core.windows.net
+    AZURE_STORAGE_FILESYSTEM: dfs-smittestopp-prod-raw
+    IOTHUB_DATA_DIR: iot-smittestopp-prod-json
+    LOG_COUNT_INTERVAL: "1000"
+    LOG_TIME_INTERVAL: "300"
+    DEBUG_OBJGRAPH: "1"
+
+  jobs:
+    db:
+      extraEnv:
+        DATA_LAKE_DAYS: "7"
+        GROUP_DELETE_DAYS: "7"
+        DB_THREADS: "8"
+        DELETE_BATCH_SIZE: "12"
+        PERSISTENT_CHECK_DB: "1"
+      resources:
+        requests:
+          memory: 16G
+          cpu: "1"
+        limits:
+          memory: 16G
+          cpu: "2"
+    idleUsers:
+      extraEnv:
+        IDLE_CUTOFF_DAYS: "7"
+        IDLE_DELETE_LIMIT: "50000"
+
+    markTestUsers:
+      extraEnv:
+        CONCURRENCY: "4"
+
+  resources:
+    requests:
+      memory: 1G
+      cpu: "1"
+    limits:
+      memory: 2G
+      cpu: "2"
+
+cert-manager:
+  webhook:
+    serviceName: corona-prod-cert-manager-webhook
+
+

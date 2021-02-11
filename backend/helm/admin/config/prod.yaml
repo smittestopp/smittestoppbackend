@@ -1,0 +1,13 @@
+namespace: prod
+clusterAdmin:
+  groups:
+    -   # A-FHI-Smittestopp-Prod-AKS-Admin
+deploymentAdmin:
+  groups:
+    -   # A-FHI-Smittestopp-Prod-AKS-User-Maintainer
+clusterMaintainer:
+  groups:
+    -   # A-FHI-Smittestopp-Prod-AKS-User-Maintainer
+clusterMonitor:
+  groups:
+    -   # A-FHI-Smittestopp-Prod-AKS-User-Monitor

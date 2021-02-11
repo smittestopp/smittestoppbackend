@@ -1,0 +1,3 @@
+#!/bin/sh
+
+psql -d coronadb -U researcher -h localhost

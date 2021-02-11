@@ -1,0 +1,61 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Registrering er deaktivert på ubestemt tid</title>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,shrink-to-fit=no,user-scalable=no,minimal-ui,viewport-fit=cover">
+    <link href="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" type="text/css" data-preload="true" />
+    <link href="https://${storage_account_name}.blob.core.windows.net/b2c/b2c.css" rel="stylesheet" type="text/css" data-preload="true" />
+
+    <style type="text/css">
+        div#api {
+            display: none !important;
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container  self_asserted_container ">
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <img alt="FHI Logo" class="companyLogo" data-tenant-branding-logo="true" src="https://${storage_account_name}.blob.core.windows.net/b2c/images/fhi-logo.png">
+                        <p class="notice">
+                            Registrering er deaktivert på ubestemt tid.
+                        </p>
+                        <p class="notice">
+                            Sletting av innsamlet data pågår.
+                        </p>
+                        <div id="api">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+    <script type="text/javascript">
+    function getQueryStringByName(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, '\\$&');
+        var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
+
+    var vUiLocales = getQueryStringByName("ui_locales");
+    var defLang = "NO";
+    if ( vUiLocales != null ) {
+        var res = vUiLocales.split("-")
+        defLang = res[1].toUpperCase();
+    }
+   </script>
+</html>

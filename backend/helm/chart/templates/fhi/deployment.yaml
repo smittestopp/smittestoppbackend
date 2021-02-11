@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "corona.fullname" . }}-fhi
+  labels:
+    component: corona
+    {{- include "corona.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.fhi.replicas }}
+  selector:
+    matchLabels:
+      component: fhi
+      {{- include "corona.matchLabels" . | nindent 6 }}
+  {{- if .Values.fhi.deploymentStrategy }}
+  strategy:
+    {{- .Values.fhi.deploymentStrategy | toYaml | trimSuffix "\n" | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        component: fhi
+        {{- include "corona.matchLabels" . | nindent 8 }}
+      annotations:
+        # This lets us autorestart when the secret changes!
+        checksum/secret: {{ include (print .Template.BasePath "/fhi/secret.yaml") . | sha256sum }}
+        {{- if .Values.fhi.annotations }}
+        {{- .Values.fhi.annotations | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8080'
+        prometheus.io/path: '/metrics'
+        prometheus.io/scheme: 'https'
+    spec:
+      nodeSelector: {{ toJson .Values.fhi.nodeSelector }}
+      volumes:
+        - name: secret
+          secret:
+            secretName: {{ template "corona.fullname" . }}-fhi
+        {{- if .Values.fhi.extraVolumes }}
+        {{- .Values.fhi.extraVolumes | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+      {{- if .Values.fhi.initContainers }}
+      initContainers:
+        {{- .Values.fhi.initContainers | toYaml | trimSuffix "\n" | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- if .Values.fhi.extraContainers }}
+        {{- .Values.fhi.extraContainers | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        - name: corona
+          image: {{ .Values.fhi.image }}
+          volumeMounts:
+            {{- range $name := list "tls.key" "tls.cert" }}
+            - mountPath: /etc/corona/{{ $name }}
+              subPath: {{ $name }}
+              name: secret
+            {{- end }}
+            {{- if .Values.fhi.extraVolumeMounts }}
+            {{- .Values.fhi.extraVolumeMounts | toYaml | trimSuffix "\n" | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- .Values.fhi.resources | toYaml | trimSuffix "\n" | nindent 12 }}
+          {{- with .Values.fhi.imagePullPolicy }}
+          imagePullPolicy: {{ . }}
+          {{- end }}
+          command:
+          {{- if .Values.fhi.command }}
+            {{- .Values.fhi.command | toYaml | trimSuffix "\n" | nindent 12 }}
+          {{- else }}
+            - python3
+            - -m
+            - corona_backend.fhi.app
+          {{- end }}
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: HELM_RELEASE_NAME
+              value: {{ .Release.Name | quote }}
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+
+            - name: REDIS_SERVICE_HOST
+              value: "{{ template "corona.fullname" . }}-redis-master"
+
+            {{- if .Values.tls.key }}
+            - name: SSL_KEY
+              value: /etc/corona/tls.key
+            {{- end }}
+            {{- if .Values.tls.cert }}
+            - name: SSL_CERT
+              value: /etc/corona/tls.cert
+            {{- end }}
+            # env from secret
+            {{- $root := . }}
+            {{- range .Values.fhi.secretEnvKeys }}
+            - name: {{ . }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "corona.fullname" $root }}-fhi
+                  key: {{ . }}
+            {{- end }}
+
+            {{- range $name, $value := .Values.fhi.secretEnv }}
+            - name: {{ $name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "corona.fullname" $root }}-fhi
+                  key: {{ $name }}
+            {{- end }}
+
+            {{- range $name, $value := .Values.fhi.extraEnv }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+
+          ports:
+            - containerPort: 8080
+              name: corona
+
+          {{- if .Values.fhi.livenessProbe.enabled }}
+          livenessProbe:
+            initialDelaySeconds: {{ .Values.fhi.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.fhi.livenessProbe.periodSeconds }}
+            tcpSocket:
+              port: corona
+          {{- end }}
+
+          {{- if .Values.fhi.readinessProbe.enabled }}
+          readinessProbe:
+            initialDelaySeconds: {{ .Values.fhi.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.fhi.readinessProbe.periodSeconds }}
+            tcpSocket:
+              port: corona
+          {{- end }}

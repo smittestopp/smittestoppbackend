@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "corona.fullname" . }}-analysis
+  labels:
+    component: analysis
+    {{- include "corona.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.analysis.replicas }}
+  selector:
+    matchLabels:
+      component: analysis
+      {{- include "corona.matchLabels" . | nindent 6 }}
+  {{- if .Values.analysis.deploymentStrategy }}
+  strategy:
+    {{- .Values.analysis.deploymentStrategy | toYaml | trimSuffix "\n" | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        component: analysis
+        {{- include "corona.matchLabels" . | nindent 8 }}
+      annotations:
+        # This lets us autorestart when the secret changes!
+        checksum/secret: {{ include (print .Template.BasePath "/analysis/secret.yaml") . | sha256sum }}
+        {{- if .Values.analysis.annotations }}
+        {{- .Values.analysis.annotations | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+    spec:
+      nodeSelector: {{ toJson .Values.analysis.nodeSelector }}
+      volumes:
+        {{- if .Values.analysis.extraVolumes }}
+        {{- .Values.analysis.extraVolumes | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+      {{- if .Values.analysis.initContainers }}
+      initContainers:
+        {{- .Values.analysis.initContainers | toYaml | trimSuffix "\n" | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- if .Values.analysis.extraContainers }}
+        {{- .Values.analysis.extraContainers | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        - name: analysis
+          image: {{ .Values.analysis.image }}
+          volumeMounts:
+            {{- if .Values.analysis.extraVolumeMounts }}
+            {{- .Values.analysis.extraVolumeMounts | toYaml | trimSuffix "\n" | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- .Values.analysis.resources | toYaml | trimSuffix "\n" | nindent 12 }}
+          {{- with .Values.analysis.imagePullPolicy }}
+          imagePullPolicy: {{ . }}
+          {{- end }}
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: HELM_RELEASE_NAME
+              value: {{ .Release.Name | quote }}
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: REDIS_SERVICE_HOST
+              value: "{{ template "corona.fullname" . }}-redis-master"
+
+            # env from secret
+            {{- $root := . }}
+            {{- range .Values.analysis.secretEnvKeys }}
+            - name: {{ . }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "corona.fullname" $root }}-analysis
+                  key: {{ . }}
+            {{- end }}
+
+            {{- range $name, $value := .Values.analysis.secretEnv }}
+            - name: {{ $name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "corona.fullname" $root }}-analysis
+                  key: {{ $name }}
+            {{- end }}
+
+            {{- range $name, $value := .Values.analysis.extraEnv }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}

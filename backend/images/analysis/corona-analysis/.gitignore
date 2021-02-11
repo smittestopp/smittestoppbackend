@@ -1,0 +1,17 @@
+.DS_Store
+.vscode/
+corona.conf
+notebooks/mapmatching_overpass/log/
+__pycache__/
+__cache__/
+*.pyc
+*.egg-info
+*.html
+
+.ipynb_checkpoints
+logs/
+tests/*.html
+__cache__/*
+
+.idea
+.pytest_cache

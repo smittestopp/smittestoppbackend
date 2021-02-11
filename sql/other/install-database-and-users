@@ -1,0 +1,20 @@
+#!/bin/bash -e
+
+# Local:
+# sudo -u postgres psql <database.sql
+# sudo -u postgres psql coronadb <schema.sql
+# sudo -u postgres psql coronadb <users.sql
+
+
+PASSWORD=`cat ~/.corona-test.password`
+
+echo "Creating database ..."
+psql "host=corona-test.postgres.database.azure.com port=5432 dbname=postgres user=maintainer@corona-test password=${PASSWORD} sslmode=require" <database.sql
+
+echo "Creating schema ..."
+psql "host=corona-test.postgres.database.azure.com port=5432 dbname=coronadb user=maintainer@corona-test password=${PASSWORD} sslmode=require" <schema.sql
+
+echo "Creating users ..."
+psql "host=corona-test.postgres.database.azure.com port=5432 dbname=coronadb user=maintainer@corona-test password=${PASSWORD} sslmode=require" <users.sql
+
+echo "Done!"

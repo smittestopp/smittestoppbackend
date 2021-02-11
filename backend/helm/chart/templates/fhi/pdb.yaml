@@ -1,0 +1,15 @@
+{{- if .Values.fhi.pdb.enabled -}}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "corona.fullname" . }}-fhi
+  labels:
+    component: fhi
+    {{- include "corona.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.fhi.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      component: fhi
+      {{- include "corona.matchLabels" . | nindent 6 }}
+{{- end }}

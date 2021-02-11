@@ -1,0 +1,53 @@
+{
+    "9b55b50c729411ea80ea42a51fad92d3": {
+        "cumulative": {
+            "all_contacts": {
+                "points_of_interest": {
+                    "residential": ""
+                },
+                "risk_cat": "",
+                "days_in_contact": "",
+                "number_of_contacts": "",
+                "bar_plot": ""
+            },
+            "gps_contacts": {
+                "cumulative_risk_score": "",
+                "cumulative_duration": "",
+                "days_in_contact": ""
+            },
+            "bt_contacts": {
+                "cumulative_risk_score": "",
+                "cumulative_duration": "",
+                "days_in_contact": "",
+                "bt_close_duration": "",
+                "bt_relatively_close_duration": "",
+                "bt_very_close_duration": ""
+            }
+        },
+        "daily": {
+            "2020-04-10": {
+                "all_contacts": {
+                    "summary_plot": "",
+                    "points_of_interest": {
+                        "residential": ""
+                    }
+                },
+                "gps_contacts": {
+                    "cumulative_duration": "",
+                    "number_of_contacts": ""
+                },
+                "bt_contacts": {
+                    "cumulative_duration": "",
+                    "number_of_contacts": "",
+                    "bt_close_duration": "",
+                    "bt_relatively_close_duration": "",
+                    "bt_very_close_duration": ""
+                }
+            }
+        },
+        "version_info": {
+            "pipeline": "",
+            "device": ""
+        }
+    }
+}

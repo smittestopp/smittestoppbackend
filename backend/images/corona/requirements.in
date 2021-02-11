@@ -1,0 +1,15 @@
+azure-iot-hub
+azure-iot-device
+cryptography
+opencensus-ext-azure
+objgraph
+pyjwt
+pyodbc
+python-dateutil
+pytest-asyncio
+pytest-cov
+pytest-tornado
+redis
+testfixtures
+tornado==6.0.*
+tornado_prometheus

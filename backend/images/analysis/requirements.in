@@ -1,0 +1,10 @@
+-r corona-analysis/requirements.txt
+--no-binary shapely
+pyjwt
+redis
+redlock-py
+tornado
+Pillow
+cartopy
+scipy
+pykdtree

@@ -1,0 +1,87 @@
+---
+# admin can do everything
+# but deployment-admin is only granted within the namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  name: smittestopp-deployment-admin
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+# maintainer read-only for now, except delete on pod for restart
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  name: smittestopp-cluster-maintainer
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  - services
+  - nodes
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions
+  resources: ["*"]
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources: ["*"]
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  name: smittestopp-maintainer
+rules:
+- apiGroups:
+  - ""
+  resources:
+    - pods
+    - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
+
+---
+# monitor can watch pod logs and restart pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  name: smittestopp-cluster-monitor
+rules:
+- apiGroups:
+  - ""
+  resources:
+    - pods
+    - pods/log
+
+  verbs:
+  - get
+  - list
+  - watch
+  - delete

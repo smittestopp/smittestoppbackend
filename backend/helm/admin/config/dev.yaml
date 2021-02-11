@@ -1,0 +1,14 @@
+namespace: dev
+clusterAdmin:
+  groups:
+    -   # A-FHI-Smittestopp-Dev-AKS-Admin
+deploymentAdmin:
+  groups:
+    -   # A-FHI-Smittestopp-Dev-AKS-User-Maintainer
+clusterMaintainer:
+  groups:
+    -   # A-FHI-Smittestopp-Dev-AKS-User-Maintainer
+clusterMonitor:
+  groups:
+    -   # A-FHI-Smittestopp-Dev-AKS-User-Monitor
+

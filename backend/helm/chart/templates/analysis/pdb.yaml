@@ -1,0 +1,15 @@
+{{- if .Values.analysis.pdb.enabled -}}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "corona.fullname" . }}-analysis
+  labels:
+    component: analysis
+    {{- include "corona.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.analysis.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      component: analysis
+      {{- include "corona.matchLabels" . | nindent 6 }}
+{{- end }}

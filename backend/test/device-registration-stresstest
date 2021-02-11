@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Device Registration Stresstest
+
+import json
+import os
+import random
+import requests
+import sys
+import threading
+import time
+
+from tornado.httputil import url_concat
+from azure.iot.device import IoTHubDeviceClient, Message
+
+
+# ====== Settings ===========================================================
+# NOTE:
+# Penetration Testing Rules of Engagement:
+# https://www.microsoft.com/en-us/msrc/pentest-rules-of-engagement
+
+release = os.environ.get("RELEASE", "dev")
+if release == "prod":
+    b2c_tenant = "smittestopp"
+    b2c_client_id = ""
+    onboardingHost = "https://pubapi.prod.corona.nntb.no/onboarding"
+else:
+    b2c_tenant = "devsmittestopp"
+    b2c_client_id = ""
+    onboardingHost = "https://pubapi.dev.corona.nntb.no/onboarding"
+
+b2c_token_url  = url_concat(
+    f"https://{b2c_tenant}.b2clogin.com/{b2c_tenant}.onmicrosoft.com/oauth2/v2.0/authorize",
+    dict(
+        p='B2C_1A_phone_SUSI',
+        client_id=b2c_client_id,
+        nonce='defaultNonce',
+        redirect_uri='https://jwt.ms',
+        scope=f"https://{b2c_tenant}.onmicrosoft.com/backend/Device.Write",
+        response_type="token",
+        prompt="login"
+    )
+)
+
+# ====== Check access token =================================================
+try:
+    token = os.environ['B2C_TOKEN']
+except KeyError:
+    sys.stderr.write('Visit this URL to get a token and store it in B2C_TOKEN environment variable:\n')
+    sys.stderr.write(f"{b2c_token_url}\n")
+    sys.exit(1)
+
+
+# ###### Perform a device registration test #################################
+def performRegistrationTest(onboardingHost, token, parallelThreads,
+                            requestNumber, totalRequests, phoneNumber):
+   global threadHasFinished
+   global lineNumber
+   global release
+
+   # ====== Submit device registration ======================================
+   startTime = time.perf_counter()
+   response = requests.post(
+      onboardingHost + '/register-device',
+      headers = {
+         'Authorization': f"Bearer {token}",
+         'Test-Number':   phoneNumber
+      }
+   )
+   endTime  = time.perf_counter()
+   duration = endTime - startTime
+   success  = True
+   error    = 'Success'
+   try:
+      response.raise_for_status()
+   except requests.exceptions.HTTPError as e:
+      success  = False
+      error    = str(e)
+      print(error)
+
+   # ====== Check result ====================================================
+   if success == True:
+      deviceInfo = response.json()
+      print(f"Registered {deviceInfo['PhoneNumber']} with ID {deviceInfo['DeviceId']} in {duration:.3f}s")
+   else:
+      print(f"Registering {phoneNumber} failed after {duration:.3f}s with {error}")
+
+   threadHasFinished.acquire()
+   lineNumber = lineNumber + 1
+   if success == True:
+      resultsFile.write(f"{lineNumber:06} \"{release}\" {requestNumber} {totalRequests} \"{deviceInfo['PhoneNumber']}\" {parallelThreads} \"{deviceInfo['DeviceId']}\" {startTime:.6f} {endTime:.6f} {duration:.6f} \"{error}\"\n")
+   else:
+      resultsFile.write(f"{lineNumber:06} \"{release}\" {requestNumber} {totalRequests} \"{phoneNumber}\" {parallelThreads} \"(null)\" {startTime:.6f} {endTime:.6f} {duration:.6f} \"{error}\"\n")
+   threadHasFinished.notify()
+   threadHasFinished.release()
+
+
+
+# ###### Main program #######################################################
+if len(sys.argv) != 4:
+   sys.stderr.write('Usage: ' + sys.argv[0] + ' output_file total_runs threads\n')
+   sys.exit(1)
+
+# ====== Prepare ============================================================
+outputFile      = sys.argv[1]
+totalRequests   = int(sys.argv[2])
+parallelThreads = int(sys.argv[3])
+
+threadHasFinished = threading.Condition()
+resultsFile = open(outputFile, 'w')
+resultsFile.write('Release RequestNumber TotalRequests PhoneNumber ParallelThreads DeviceID StartTime EndTime Duration Error\n')
+
+# ====== Main loop ==========================================================
+requestNumber   = 0
+lineNumber      = 0
+threadList      = []
+threadHasFinished.acquire()
+while requestNumber < totalRequests:
+   # ====== Start new thread, if possible ===================================
+   if len(threadList) < parallelThreads:
+      requestNumber   = requestNumber + 1
+      phoneNumber = f"+00{random.randint(1,9999):06}"
+      newThread   = threading.Thread(target=performRegistrationTest,
+                                     args=(onboardingHost, token, parallelThreads,
+                                           requestNumber, totalRequests, phoneNumber))
+      newThread.start()
+      threadList.append(newThread)
+   else:
+      threadHasFinished.wait(1)
+
+   # ====== Join finished threads ===========================================
+   for thread in threadList:
+      # print(thread, thread.is_alive())
+      if not thread.is_alive():
+         thread.join()
+         threadList.remove(thread)
+
+   # print("L=",len(threadList))
+
+
+# ====== Clean up ===========================================================
+threadHasFinished.release()
+for thread in threadList:
+   thread.join()
+resultsFile.close()

@@ -1,0 +1,27 @@
+# Risk negligible according to https://people.canonical.com/~ubuntu-security/cve/2017/CVE-2017-8283.html 
+CVE-2017-8283
+
+# Considered low in Ubuntu according to https://people.canonical.com/~ubuntu-security/cve/2017/CVE-2017-11164.html
+CVE-2017-11164
+
+# Risk negligible according to https://people.canonical.com/~ubuntu-security/cve/2020/CVE-2020-11656.html
+CVE-2020-11656
+
+# Risk negligible according to https://people.canonical.com/~ubuntu-security/cve/2018/CVE-2018-1000654.html
+CVE-2018-1000654
+
+# Considered low in Ubuntu according to https://people.canonical.com/~ubuntu-security/cve/2020/CVE-2020-8492.html
+CVE-2020-8492
+
+# Considered low for Smittestopp since perl regexp not used in any online flow, and the attack is considered hard on 64bit systems
+CVE-2020-10543
+CVE-2020-10878
+CVE-2020-12723
+
+# Considered negligible for Smittestopp since sqlite is not used,
+# but is pulled in as a dependency of python stdlib
+# ref: https://people.canonical.com/~ubuntu-security/cve/2020/CVE-2020-13630.html
+CVE-2020-13630
+
+# Considered low for Smittestopp as pcre isn't used directly
+CVE-2020-14155

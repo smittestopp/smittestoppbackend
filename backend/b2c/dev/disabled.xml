@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<TrustFrameworkPolicy xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06" PolicySchemaVersion="0.3.0.0" TenantId="devsmittestopp.onmicrosoft.com"
+  PolicyId="B2C_1A_phone_SUSI_disabled" PublicPolicyUri="http://smittestopp.onmicrosoft.com/B2C_1A_phone_SUSI">
+  <!-- for AppInsights, copy these to above
+    DeploymentMode="Development"
+    UserJourneyRecorderEndpoint="urn:journeyrecorder:applicationinsights"
+  -->
+
+  <BasePolicy>
+    <TenantId>devsmittestopp.onmicrosoft.com</TenantId>
+    <PolicyId>B2C_1A_FHI_TrustFrameworkLocalization</PolicyId>
+  </BasePolicy>
+
+  <BuildingBlocks>
+
+    <ClaimsSchema>
+      <ClaimType Id="disabledRegistration">
+        <DisplayName>Registrering er deaktivert på ubestemt tid</DisplayName>
+        <DataType>string</DataType>
+        <UserHelpText>Registrering er deaktivert på ubestemt tid</UserHelpText>
+        <UserInputType>TextBox</UserInputType>
+        <PredicateValidationReference Id="disabledRegistration"/>
+      </ClaimType>
+    </ClaimsSchema>
+
+    <Predicates>
+        <!-- impossible validation for predicate (length == 1 == 2) -->
+        <Predicate Id="disabledRegistration1" Method="IsLengthRange">
+          <UserHelpText>Registrering er deaktivert på ubestemt tid</UserHelpText>
+          <Parameters>
+            <Parameter Id="Minimum">128</Parameter>
+            <Parameter Id="Maximum">128</Parameter>
+          </Parameters>
+        </Predicate>
+        <Predicate Id="disabledRegistration2" Method="IsLengthRange">
+          <!-- empty to avoid duplicate message -->
+          <UserHelpText> </UserHelpText>
+          <Parameters>
+            <Parameter Id="Minimum">1</Parameter>
+            <Parameter Id="Maximum">1</Parameter>
+          </Parameters>
+        </Predicate>
+
+    </Predicates>
+    <PredicateValidations>
+      <PredicateValidation Id="disabledRegistration">
+        <PredicateGroups>
+          <PredicateGroup Id="disabledRegistrationGroup">
+            <PredicateReferences>
+              <PredicateReference Id="disabledRegistration1" />
+              <PredicateReference Id="disabledRegistration2" />
+            </PredicateReferences>
+          </PredicateGroup>
+        </PredicateGroups>
+      </PredicateValidation>
+    </PredicateValidations>
+
+    <ClaimsTransformations>
+    </ClaimsTransformations>
+
+  </BuildingBlocks>
+
+  <ClaimsProviders>
+    <ClaimsProvider>
+      <DisplayName>Username based Sign In</DisplayName>
+      <TechnicalProfiles>
+        <TechnicalProfile Id="DisabledSignIn">
+          <DisplayName>Registration Disabled</DisplayName>
+          <Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+          <Metadata>
+            <Item Key="ContentDefinitionReferenceId">api.disabled</Item>
+          </Metadata>
+          <IncludeInSso>false</IncludeInSso>
+          <InputClaims>
+            <!--<InputClaim ClaimTypeReferenceId="signInNames.phoneNumber" />-->
+            <InputClaim ClaimTypeReferenceId="disabledRegistration" />
+          </InputClaims>
+          <OutputClaims>
+            <OutputClaim ClaimTypeReferenceId="disabledRegistration" Required="true" />
+          </OutputClaims>
+        </TechnicalProfile>
+      </TechnicalProfiles>
+    </ClaimsProvider>
+  </ClaimsProviders>
+
+  <UserJourneys>
+    <UserJourney Id="Disabled">
+      <OrchestrationSteps>
+        <OrchestrationStep Order="1" Type="ClaimsExchange">
+          <ClaimsExchanges>
+            <ClaimsExchange Id="DisabledSignIn" TechnicalProfileReferenceId="DisabledSignIn" />
+          </ClaimsExchanges>
+        </OrchestrationStep>
+        <OrchestrationStep Order="2" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
+        </OrchestrationSteps>
+    </UserJourney>
+  </UserJourneys>
+  <RelyingParty>
+    <DefaultUserJourney ReferenceId="Disabled" />
+    <!-- for AppInsight - add your key -->
+    <UserJourneyBehaviors>
+    <!--       <JourneyInsights TelemetryEngine="ApplicationInsights" InstrumentationKey="...guid..." DeveloperMode="true" ClientEnabled="true" ServerEnabled="true" TelemetryVersion="1.0.0" />
+ -->
+      <ScriptExecution>Allow</ScriptExecution>
+    </UserJourneyBehaviors>
+
+    <TechnicalProfile Id="PolicyProfile">
+      <DisplayName>PolicyProfile</DisplayName>
+      <Protocol Name="OpenIdConnect" />
+      <OutputClaims>
+        <OutputClaim ClaimTypeReferenceId="disabledRegistration" PartnerClaimType="sub"/>
+      </OutputClaims>
+      <SubjectNamingInfo ClaimType="sub" />
+    </TechnicalProfile>
+  </RelyingParty>
+</TrustFrameworkPolicy>

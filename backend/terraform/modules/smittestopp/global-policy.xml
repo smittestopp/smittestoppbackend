@@ -1,0 +1,53 @@
+<policies>
+    <inbound>
+        <choose>
+            <when condition='@(context.Request.OriginalUrl.Scheme != "https")'>
+                <return-response>
+                    <set-status code="301" reason="HTTPS only" />
+                    <set-header name="Location" exists-action="override">
+                        <value>@("https://" + context.Request.OriginalUrl.Host + context.Request.OriginalUrl.Path)</value>
+                    </set-header>
+                </return-response>
+            </when>
+        </choose>
+        <set-header name="Forwarded" exists-action="override">
+            <value>@("proto=" + context.Request.OriginalUrl.Scheme + ";host=" + context.Request.OriginalUrl.Host + ";")</value>
+        </set-header>
+        <set-header name="X-Forwarded-Proto" exists-action="override">
+            <value>@(context.Request.OriginalUrl.Scheme)</value>
+        </set-header>
+        <set-header name="X-Forwarded-Host" exists-action="override">
+            <value>@(context.Request.OriginalUrl.Host)</value>
+        </set-header>
+        <set-header name="Host" exists-action="override">
+            <value>@(context.Request.OriginalUrl.Host)</value>
+        </set-header>
+    </inbound>
+    <backend>
+        <forward-request timeout="30"/>
+    </backend>
+    <outbound>
+        <set-header name="Strict-Transport-Security" exists-action="override">
+            <value>max-age=31536000; includeSubDomains</value>
+        </set-header>
+        <set-header name="Content-Security-Policy" exists-action="override">
+            <value>default-src 'none'</value>
+        </set-header>
+        <set-header name="X-Frame-Options" exists-action="override">
+            <value>SAMEORIGIN</value>
+        </set-header>
+        <set-header name="X-Content-Type-Options" exists-action="override">
+            <value>nosniff</value>
+        </set-header>
+        <set-header name="Referrer-Policy" exists-action="override">
+            <value>no-referrer</value>
+        </set-header>
+        <set-header name="Feature-Policy" exists-action="override">
+            <value>geolocation 'none'</value>
+        </set-header>
+        <set-header name="Expect-CT" exists-action="override">
+            <value>max-age=86400, enforce</value>
+        </set-header>
+    </outbound>
+    <on-error />
+</policies>

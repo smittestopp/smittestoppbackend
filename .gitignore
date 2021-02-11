@@ -1,0 +1,17 @@
+env
+__pycache__
+*~
+.cache
+.terraform
+*.tfstate.backup
+*.tfstate.*.backup
+charts
+.DS_Store
+
+iot-smittestopp-dev
+backend/images/analysis/corona
+backend/images/fhi/corona
+backend/secrets/letsencrypt
+htmlcov
+.coverage
+.pytest_cache

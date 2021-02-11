@@ -1,0 +1,48 @@
+<policies>
+    <inbound>
+        <base />
+        %{ if length(allowed_ips) > 0 }
+        <ip-filter action="allow">
+            %{ for ip in allowed_ips }
+            <address>${ip}</address>
+            %{ endfor }
+        </ip-filter>
+        %{ endif }
+        <choose>
+            <when condition="@(context.Request.Certificate == null)" >
+                <return-response>
+                    <set-status code="401" reason="Client certificate required" />
+                </return-response>
+            </when>
+            <when condition="@(!context.Request.Certificate.VerifyNoRevocation())" >
+                <return-response>
+                    <set-status code="403" reason="Invalid client certificate" />
+                </return-response>
+            </when>
+            <when condition="@(!context.Deployment.Certificates.Any(c => c.Value.Thumbprint == context.Request.Certificate.Thumbprint) && context.Request.Certificate.Thumbprint != "${client_cert_thumbprint}")" >
+                <return-response>
+                    <set-status code="403" reason="Unauthorized client certificate" />
+                </return-response>
+            </when>
+        </choose>
+        <set-header name="Certificate-Issuer" exists-action="override">
+            <value>@(context.Request.Certificate.Issuer)</value>
+        </set-header>
+        <set-header name="Certificate-Name" exists-action="override">
+            <value>@(context.Request.Certificate.SubjectName.Name)</value>
+        </set-header>
+        <authentication-basic username="api-gateway" password="${backend_password}" />
+        <set-header name="Api-Key" exists-action="override">
+            <value>${backend_password}</value>
+        </set-header>
+    </inbound>
+    <backend>
+        <forward-request timeout="120"/>
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

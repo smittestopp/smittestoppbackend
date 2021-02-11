@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "corona.fullname" . }}-fhi
+  labels:
+    {{- include "corona.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.fhi.service.annotations }}
+    {{- .Values.fhi.service.annotations | toYaml | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.fhi.service.type }}
+  {{- if .Values.fhi.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.fhi.service.loadBalancerIP }}
+  {{- end }}
+  selector:
+    component: "fhi"
+    {{- include "corona.matchLabels" . | nindent 4 }}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      name: http
+    - protocol: TCP
+      port: 443
+      targetPort: 8080
+      name: https

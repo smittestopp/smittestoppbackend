@@ -1,0 +1,258 @@
+dps:
+  idScope: null
+  enrollmentGroupSymmetricKey: null
+
+activeDirectory:
+  tenantId: ""
+  tenantName: ""
+  clientId: ""
+  clientSecret: ""
+  policyName: ""
+  scope: ""
+
+search:
+  name: null
+  indexName: null
+  key: null
+
+onboarding:
+  extraEnv: {}
+  secretEnv: {}
+  secretEnvKeys:
+    # keys *not* set in secretEnv, but derived from other structures
+    - ID_SCOPE
+    - GROUP_SYMMETRIC_KEY
+    - AAD_TENANT_NAME
+    - AAD_TENANT_ID
+    - AAD_CLIENT_ID
+    - AAD_CLIENT_SECRET
+    - AAD_POLICY_NAME
+    - AAD_SCOPE
+    - IOTHUB_CONNECTION_STRING
+
+  blacklist: []
+
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPU: 50
+
+  image: acrsmittestoppdev.azurecr.io/smittestopp/corona
+  imagePullPolicy: Always
+
+  nodeSelector: null
+
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+  resources:
+    requests:
+      memory: 256M
+      cpu: "1"
+
+  annotations: {}
+
+  extraContainers: null
+  extraVolumes: null
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    loadBalancerIP: 10.240.255.1
+    ports:
+      nodePort: null
+
+  ingress:
+    enabled: false
+    hosts: []
+
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: "25%"
+      maxUnavailable: "50%"
+
+fhi:
+  image: acrsmittestoppdev.azurecr.io/smittestopp/fhi
+  extraEnv: {}
+  secretEnv: {}
+  secretEnvKeys:
+    - AAD_TENANT_NAME
+    - AAD_TENANT_ID
+    - AAD_CLIENT_ID
+    - AAD_CLIENT_SECRET
+    - CLIENT_ID
+    - CLIENT_SECRET
+    - API_KEY
+    - IOTHUB_CONNECTION_STRING
+    - REDIS_PASSWORD
+
+  auth:
+    username: ""
+    password: null
+
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPU: 50
+
+  image: "from-acr"
+  imagePullPolicy: Always
+
+  nodeSelector: null
+
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+  resources:
+    requests:
+      memory: 256M
+      cpu: "1"
+
+  annotations: {}
+
+  extraContainers: null
+  extraVolumes: null
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    loadBalancerIP: 10.240.255.2
+    ports:
+      nodePort: null
+
+  ingress:
+    enabled: false
+    hosts: []
+
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: "25%"
+      maxUnavailable: "50%"
+
+
+cert-manager:
+  webhook:
+    serviceName: corona-dev-cert-manager-webhook
+  ingressShim:
+    defaultIssuerName: letsencrypt-prod
+    defaultIssuerKind: ClusterIssuer
+
+
+letsencrypt:
+  email: some@email.here
+
+nginx-ingress:
+  controller:
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+      loadBalancerIP: 10.240.255.100
+
+redis:
+  metrics:
+    enabled: true
+  master:
+    persistence:
+      storageClass: default
+
+analysis:
+  image: acrsmittestoppdev.azurecr.io/smittestopp/analysis
+  extraEnv: {}
+  secretEnv: {}
+  secretEnvKeys:
+    - REDIS_PASSWORD
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPU: 50
+
+  imagePullPolicy: Always
+
+  nodeSelector: null
+
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+  resources:
+    requests:
+      memory: 1G
+      cpu: 250m
+    limits:
+      memory: 2G
+      cpu: "2"
+
+  annotations: {}
+
+delete:
+  enabled: true
+  image: acrsmittestoppdev.azurecr.io/smittestopp/delete
+  extraEnv:
+    FETCH_TIMEOUT: "600"
+  secretEnv: {}
+  secretEnvKeys:
+    - AAD_TENANT_NAME
+    - AAD_TENANT_ID
+    - AAD_CLIENT_ID
+    - AAD_CLIENT_SECRET
+    - IOTHUB_CONNECTION_STRING
+    - AZURE_STORAGE_ACCOUNT_KEY
+
+  schedule: "@hourly"
+  concurrencyPolicy: Forbid
+  ttlSecondsAfterFinished: 86400
+  nodeSelector: null
+
+  resources:
+    requests:
+      memory: 500M
+      cpu: "250m"
+    limits:
+      memory: 750M
+      cpu: "1"
+
+  jobs:
+    db: {}
+    idleUsers:
+      args:
+        - "python3"
+        - "-mcorona_delete.delete"
+        - "--idle-users"
+      extraEnv:
+        PERSISTENT_CHECK_DB: "1"
+    markTestUsers:
+      args:
+        - "python3"
+        - "-mcorona_delete.mark_test_users"
+

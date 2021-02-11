@@ -1,0 +1,4 @@
+onboarding:
+  blacklist:
+    # add list of banned phones here
+    - "+0010000001"  # invalid test number

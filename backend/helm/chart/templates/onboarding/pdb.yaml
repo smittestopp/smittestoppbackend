@@ -1,0 +1,15 @@
+{{- if .Values.onboarding.pdb.enabled -}}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "corona.fullname" . }}-onboarding
+  labels:
+    component: onboarding
+    {{- include "corona.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.onboarding.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      component: onboarding
+      {{- include "corona.matchLabels" . | nindent 6 }}
+{{- end }}

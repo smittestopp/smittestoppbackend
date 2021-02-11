@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "corona.fullname" . }}-onboarding
+  labels:
+    {{- include "corona.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.onboarding.service.annotations }}
+    {{- .Values.onboarding.service.annotations | toYaml | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.onboarding.service.type }}
+  {{- if .Values.onboarding.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.onboarding.service.loadBalancerIP }}
+  {{- end }}
+  selector:
+    component: "onboarding"
+    {{- include "corona.matchLabels" . | nindent 4 }}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      name: http
+    - protocol: TCP
+      port: 443
+      targetPort: 8080
+      name: https

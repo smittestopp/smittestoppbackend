@@ -1,0 +1,148 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>SMS Verification</title>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,shrink-to-fit=no,user-scalable=no,minimal-ui,viewport-fit=cover">
+    <link href="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+    <link href="https://${storage_account_name}.blob.core.windows.net/b2c/b2c.css"  rel="stylesheet" type="text/css" />
+
+</head>
+<body>
+    <div class="container  phonefactor_container ">
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <img alt="FHI Logo" class="companyLogo" data-tenant-branding-logo="true" src="https://${storage_account_name}.blob.core.windows.net/b2c/images/fhi-logo.png">
+                        <div id="api">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+    function isNorwegian() {
+        return document.documentElement.lang === 'nb';
+    }
+
+    function verificationCodeAriaLabel() {
+        if (isNorwegian()) {
+            return "Skriv inn bekreftelseskoden fra SMS"
+        } else {
+            return "Enter the verification code from the SMS"
+        }
+     }
+
+    function verificationCodeLabelAriaLabel() {
+        if (isNorwegian()) {
+            return "Skriv inn bekreftelseskoden nedenfor"
+        } else {
+            return "Enter the verification code below"
+        }
+     }
+
+    var verCode = document.getElementById("verificationCode");
+    if ( verCode != null ) {
+        verCode.autocomplete = "one-time-code";
+        verCode.inputmode = "numeric";
+        verCode.pattern = "[0-9]*";
+        verCode.ariaLabel = verificationCodeAriaLabel();
+        verCode.ariaRequired = true;
+    }
+
+    var verCodeLabel = verCode.labels.length > 0 ? verCode.labels[0] : null;
+    if (verCodeLabel != null) {
+        verCodeLabel.ariaLabel = verificationCodeLabelAriaLabel();
+    }
+
+    var sendNewCode = document.getElementById('retryCode')
+    if (sendNewCode != null) {
+        // "Send new code" behaves like a proper button despite being <a> element.
+        // For VoiceOver to announce "send ny kode, knapp"
+        sendNewCode.role = 'button';
+    }
+
+    var verPhone = document.getElementById("verifyPhone");
+    if (verPhone) {
+        verPhone.remove();
+    }
+
+    document.getElementById("verifyCode").addEventListener("click", function () {
+        var container = document.getElementById("codeVerification")
+        container.removeAttribute("aria-hidden")
+
+        var retry = document.getElementById("retryCode")
+        retry.ariaLabel = retry.innerText
+
+        var descriptionAboveInput = container.getElementsByClassName("actionLabel")[0]
+        descriptionAboveInput.removeAttribute("aria-hidden")
+
+        var origCodeTextField = document.getElementById("verificationCode")
+        origCodeTextField.setAttribute('style', 'display: none;')
+        origCodeTextField.setAttribute('aria-hidden', 'true')
+
+        const config = { attributes: true, childList: true, subtree: true };
+        var observer;
+        const callback = function(mutationsList, observer) {
+            for (let mutation of mutationsList) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    observer.disconnect();
+                    origCodeTextField.setAttribute('style', 'display: none;')
+                    observer.observe(origCodeTextField, config);
+                }
+                if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+                    observer.disconnect();
+                    origCodeTextField.setAttribute('aria-hidden', 'true')
+                    observer.observe(origCodeTextField, config);
+                }
+            }
+        };
+        observer = new MutationObserver(callback);
+        observer.observe(origCodeTextField, config);
+
+        if (document.getElementById('customVerificationCode') == null) {
+            // our own input text field for the SMS code
+            var codeTextField = document.createElement('input');
+            codeTextField.setAttribute('id', 'customVerificationCode')
+            codeTextField.setAttribute('autocomplete', 'one-time-code')
+            codeTextField.setAttribute('maxlength', '6')
+            codeTextField.setAttribute('pattern', '[0-9]*')
+            codeTextField.setAttribute('role', 'textbox')
+            codeTextField.setAttribute('type', 'text')
+            codeTextField.setAttribute('placeholder', isNorwegian() ? 'Tast-inn 6-sifret kode fra SMS melding' : 'Enter 6 digit code from SMS')
+            codeTextField.setAttribute('aria-required', 'true')
+            codeTextField.setAttribute('aria-hidden', 'false')
+            codeTextField.setAttribute('aria-label', verificationCodeAriaLabel())
+            codeTextField.oninput = function codeTextFieldOnInput() {
+                const len = codeTextField.value.length
+                codeSubmitButton.disabled = len != 6
+            }
+            container.appendChild(codeTextField)
+
+            // our own submit button that forwards the code to the original B2C-provided input field
+            var codeSubmitButton = document.createElement('button')
+            codeSubmitButton.setAttribute('id', 'customSubmit')
+            codeSubmitButton.setAttribute('type', 'button')
+            codeSubmitButton.setAttribute('style', 'margin-top: 20px;')
+            codeSubmitButton.innerText = isNorwegian() ? 'Send inn kode' : 'Submit code'
+            codeSubmitButton.disabled = true
+            codeSubmitButton.onclick = function codeSubmitButtonOnClick() {
+                origCodeTextField.value = codeTextField.value
+                origCodeTextField.focus()
+                origCodeTextField.dispatchEvent(new KeyboardEvent('keyup',{'key':48, 'which':48, 'keyCode':48}))
+            }
+            container.appendChild(codeSubmitButton)
+        }
+    })
+
+
+    </script>
+</body>
+</html>

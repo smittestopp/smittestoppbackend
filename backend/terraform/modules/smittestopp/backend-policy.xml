@@ -1,0 +1,23 @@
+<policies>
+    <inbound>
+        <base />
+        <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Invalid token">
+            <openid-config url="https://${tenant_name}.b2clogin.com/${tenant_name}.onmicrosoft.com/v2.0/.well-known/openid-configuration?p=B2C_1A_phone_SUSI" />
+            <audiences>
+                <audience>${backend_client_id}</audience>
+            </audiences>
+            <issuers>
+                <issuer>https://${tenant_name}.b2clogin.com/${tenant_id}v2.0</issuer>
+            </issuers>
+        </validate-jwt>
+    </inbound>
+    <backend>
+        <forward-request timeout="30"/>
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

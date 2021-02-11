@@ -1,0 +1,12 @@
+pandas
+numba
+pyodbc
+tqdm
+networkx
+folium
+matplotlib
+requests
+more-itertools
+wquantiles
+Pillow 
+scipy

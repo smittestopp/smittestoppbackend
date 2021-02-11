@@ -1,0 +1,87 @@
+{{- if .Values.delete.enabled }}
+{{- $root := . }}
+{{- $Values := .Values }}
+
+{{- $subSections := dict "db" "db" "idle-users" "idleUsers" "mark-test-users" "markTestUsers" }}
+
+{{- range $jobName := list "db" "idle-users" "mark-test-users" -}}
+{{- $subSection := get $Values.delete.jobs (get $subSections $jobName) }}
+
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ template "corona.fullname" $root }}-delete-{{ $jobName }}
+  labels:
+    component: delete-{{ $jobName }}
+    {{- include "corona.labels" $root | nindent 4 }}
+spec:
+  schedule: {{ $Values.delete.schedule | quote }}
+  concurrencyPolicy: {{ $Values.delete.concurrencyPolicy }}
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: {{ $Values.delete.ttlSecondsAfterFinished }}
+      activeDeadlineSeconds: {{ $Values.delete.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            component: delete-{{ $jobName }}
+            {{- include "corona.matchLabels" $root | nindent 12 }}
+          annotations:
+            # This lets us autorestart when the secret changes!
+            checksum/secret: {{ include (print $root.Template.BasePath "/delete/secret.yaml") $root | sha256sum }}
+            {{- if $Values.delete.annotations }}
+            {{- $Values.delete.annotations | toYaml | trimSuffix "\n" | nindent 12 }}
+            {{- end }}
+        spec:
+          restartPolicy: OnFailure
+          nodeSelector: {{ toJson $Values.delete.nodeSelector }}
+          containers:
+
+            - name: {{ $jobName }}
+              image: {{ $Values.delete.image }}
+              {{- if $subSection.args }}
+              args:
+                {{- $subSection.args | toYaml | trimSuffix "\n" | nindent 16 }}
+                {{- if $subSection.dryRun }}
+                - "--dry-run"
+                {{- end }}
+              {{- end }}
+              resources:
+                {{- ($subSection.resources | default $Values.delete.resources) | toYaml | trimSuffix "\n" | nindent 16 }}
+              {{- with $Values.delete.imagePullPolicy }}
+              imagePullPolicy: {{ . }}
+              {{- end }}
+              env:
+                - name: PYTHONUNBUFFERED
+                  value: "1"
+                # env from secret
+                {{- range $Values.delete.secretEnvKeys }}
+                - name: {{ . }}
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ template "corona.fullname" $root }}-delete
+                      key: {{ . }}
+                {{- end }}
+
+                {{- range $key, $value := $Values.delete.secretEnv }}
+                - name: {{ $key }}
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ template "corona.fullname" $root }}-delete
+                      key: {{ $key }}
+                {{- end }}
+
+                {{- range $key, $value := $Values.delete.extraEnv }}
+                {{- if not (get (get $subSection "extraEnv" | default dict) $key) }}
+                - name: {{ $key }}
+                  value: {{ $value | quote }}
+                {{- end }}
+                {{- end }}
+
+                {{- range $key, $value := $subSection.extraEnv }}
+                - name: {{ $key }}
+                  value: {{ $value | quote }}
+                {{- end }}
+---
+{{- end }}
+{{- end }}

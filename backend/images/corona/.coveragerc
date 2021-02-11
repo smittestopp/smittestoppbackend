@@ -1,0 +1,2 @@
+[run]
+omit = corona_backend/test*, corona_backend/dps.py, corona_backend/log.py, corona_backend/__main__.py

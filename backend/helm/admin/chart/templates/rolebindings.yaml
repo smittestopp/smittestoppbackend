@@ -1,0 +1,115 @@
+# clusterAdmin has cluster-admin permissions (obvs)
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smittestopp-cluster-admin
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+{{- range .Values.clusterAdmin.groups }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: {{ . }}
+{{- end }}
+{{- range .Values.clusterAdmin.users }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: {{ . }}
+{{- end }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smittestopp-cluster-maintainer
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+roleRef:
+  kind: ClusterRole
+  name: smittestopp-cluster-maintainer
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+{{- range .Values.clusterMaintainer.groups }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: {{ . }}
+{{- end }}
+{{- range .Values.clusterMaintainer.users }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: {{ . }}
+{{- end }}
+---
+# deployment-admin is a Role, not a ClusterRole
+# to limit to namespace
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smittestopp-deployment-admin
+  namespace: {{ .Values.namespace }}
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+roleRef:
+  kind: ClusterRole
+  name: smittestopp-deployment-admin
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+{{- range .Values.deploymentAdmin.groups }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: {{ . }}
+{{- end }}
+{{- range .Values.deploymentAdmin.users }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: {{ . }}
+{{- end }}
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smittestopp-maintainer
+  namespace: {{ .Values.namespace }}
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+roleRef:
+  kind: ClusterRole
+  name: smittestopp-maintainer
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+{{- range .Values.clusterMaintainer.groups }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: {{ . }}
+{{- end }}
+{{- range .Values.clusterMaintainer.users }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: {{ . }}
+{{- end }}
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smittestopp-cluster-monitor
+  namespace: {{ .Values.namespace }}
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+roleRef:
+  kind: ClusterRole
+  name: smittestopp-cluster-monitor
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+{{- range .Values.clusterMonitor.groups }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: {{ . }}
+{{- end }}
+{{- range .Values.clusterMonitor.users }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: {{ . }}
+{{- end }}

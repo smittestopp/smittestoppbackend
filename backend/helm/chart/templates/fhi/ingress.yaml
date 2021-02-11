@@ -1,0 +1,30 @@
+{{- if .Values.fhi.ingress.enabled }}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ template "corona.fullname" . }}-fhi
+  labels:
+    component: fhi
+    {{- include "corona.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+spec:
+  rules:
+    {{ $root := . }}
+    {{ range $host := .Values.fhi.ingress.hosts }}
+    - host: {{ $host }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ template "corona.fullname" $root }}-fhi
+              servicePort: 80
+    {{ end }}
+  tls:
+    - secretName: {{ template "corona.fullname" . }}-fhi-tls
+      hosts:
+      {{- range $host := .Values.fhi.ingress.hosts }}
+      - {{ $host }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,237 @@
+# Docker
+# Build a Docker image 
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+  branches:
+    include:
+      - 'master' # only run on master; other branches run via pull request
+      # cf. https://docs.microsoft.com/en-us/azure/devops/pipelines/repos/github?view=azure-devops&tabs=yaml#ci-triggers
+
+resources:
+- repo: self
+
+variables:
+  dockerRegistryServiceConnection: ''
+  containerRegistry: ''
+  tag: '$(Build.BuildNumber)'
+  vmImageName: 'ubuntu-latest'
+  aksConnectionType: 'Azure Resource Manager'
+  aksSubscriptionEndpoint: ''
+  azureResourceGroup: ''
+  aksCluster: ''
+  aksNamespace: 'dev'
+
+  coronaImageRepository: 'smittestopp/corona'
+  coronaDockerfilePath: '$(Build.SourcesDirectory)/backend/images/corona/Dockerfile'  
+  deleteImageRepository: 'smittestopp/delete'
+  deleteDockerfilePath: '$(Build.SourcesDirectory)/backend/images/delete/Dockerfile'  
+  analysisImageRepository: 'smittestopp/analysis'
+  analysisDockerfilePath: '$(Build.SourcesDirectory)/backend/images/analysis/Dockerfile'  
+
+stages:
+- stage: Test
+  displayName: Test stage
+  jobs:
+  - job: PyTest
+    displayName: Run PyTest
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.7'
+    - script: python -m pip install --upgrade pip setuptools wheel
+      displayName: 'Install tools'
+    - script: |
+        pip install -r backend/images/corona/requirements.txt
+        pip install -r backend/images/delete/requirements.txt
+      displayName: 'Install image requirements'
+    - script: python -m pip install black isort flake8 pytest pytest-cov pytest-asyncio pytest-tornado testfixtures python-dateutil
+      displayName: 'Install dev dependencies'
+    - script: |
+        sudo apt-get install libcurl4-openssl-dev libssl-dev
+        python -m pip install pycurl
+      displayName: 'Install pycurl'
+    - task: DownloadSecureFile@1
+      name: gitCryptKey
+      displayName: 'Get git-crypt key'
+      inputs:
+        secureFile: 'git-crypt-key.txt'
+    - script: |
+        sudo apt-get install git-crypt
+        cat $(gitCryptKey.secureFilePath) | git-crypt unlock -
+        sed -i 's/IOTHUB_CONNECTION_STRING=\(.*\)/IOTHUB_CONNECTION_STRING="\1"/g' backend/secrets/dev/env-file
+      displayName: 'Decrypt secret file'
+    - script: |
+        set -a && source ../../secrets/dev/env-file && set +a
+        ASYNC_TEST_TIMEOUT=10 PROVISIONING_TIMEOUT=1 python -m pytest -vv --junitxml=junit/test-results.xml --cov=corona_backend --cov-report=xml --cov-report=html
+      workingDirectory: backend/images/corona
+      displayName: 'Run PyTest on Corona image'
+      continueOnError: true
+    - script: |
+        set -a && source ../../secrets/dev/env-file && set +a
+        export PYTHONPATH=$(pwd)/../corona:$PYTHONPATH
+        python -m pytest --async-test-timeout 15 -vv -k 'not batch_delete' --junitxml=junit/test-results.xml --cov=corona_delete --capture=tee-sys --cov-report=xml --cov-report=html
+      workingDirectory: backend/images/delete
+      displayName: 'Run PyTest on delete image'
+      continueOnError: true
+      timeoutInMinutes: 5
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFiles: '**/test-*.xml'
+        testRunTitle: 'Publish test results'
+    - task: PublishCodeCoverageResults@1
+      inputs:
+        codeCoverageTool: Cobertura
+        summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+        reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+
+- stage: Build
+  displayName: Build and push stage
+  jobs:   
+  - job: Build
+    displayName: Build corona image
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: DownloadSecureFile@1
+      name: gitCryptKey
+      displayName: 'Get git-crypt key'
+      inputs:
+        secureFile: 'git-crypt-key.txt'
+    - script: |
+        sudo apt-get install git-crypt
+        cat $(gitCryptKey.secureFilePath) | git-crypt unlock -
+  
+    - task: Docker@2
+      displayName: Build corona image
+      inputs:
+        command: build
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: $(coronaImageRepository)
+        dockerfile: $(coronaDockerfilePath)
+        tags: |
+          $(tag)    
+
+    - task: ShellScript@2
+      displayName: Trivy corona image
+      inputs:
+        scriptPath: 'scripts/get_and_run_trivy.sh'
+        args: $(containerRegistry) $(coronaImageRepository):$(tag)
+    
+
+    - task: Docker@2
+      displayName: Build delete image
+      inputs:
+        command: build
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: $(deleteImageRepository)
+        dockerfile: $(deleteDockerfilePath)
+        arguments: --build-arg CORONA_IMAGE="$(containerRegistry)/$(coronaImageRepository):$(tag)"
+        tags: |
+          $(tag)
+
+    - task: ShellScript@2
+      displayName: Trivy delete image
+      inputs:
+        scriptPath: 'scripts/get_and_run_trivy.sh'
+        args: $(containerRegistry) $(deleteImageRepository):$(tag)
+
+    - task: Docker@2
+      displayName: Build analysis image
+      inputs:
+        command: build
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: $(analysisImageRepository)
+        dockerfile: $(analysisDockerfilePath)
+        tags: |
+          $(tag)
+
+    - task: ShellScript@2
+      displayName: Trivy analysis image
+      inputs:
+        scriptPath: 'scripts/get_and_run_trivy.sh'
+        args: $(containerRegistry) $(analysisImageRepository):$(tag)
+    
+    - task: Docker@2
+      displayName: Push corona image
+      inputs:
+        command: push
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: $(coronaImageRepository)
+        dockerfile: $(coronaDockerfilePath)
+        tags: |
+          $(tag)
+        # latest
+    
+    - task: Docker@2
+      displayName: Push delete image
+      inputs:
+        command: push
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: $(deleteImageRepository)
+        dockerfile: $(deleteDockerfilePath)
+        tags: |
+          $(tag)
+        # latest
+
+    - task: Docker@2
+      displayName: Push analysis image
+      inputs:
+        command: push
+        containerRegistry: $(dockerRegistryServiceConnection)
+        repository: $(analysisImageRepository)
+        dockerfile: $(analysisDockerfilePath)
+        tags: |
+          $(tag)
+        # latest
+
+- stage: DevDeploy
+  displayName: Dev Deployment
+  jobs:
+  - job: Helm
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: HelmInstaller@1
+      displayName: Helm installer
+      inputs: 
+        helmVersionToInstall: 3.2.0
+
+    - script: |
+        helm plugin install https://github.com/databus23/helm-diff --version master
+        helm dep up ./backend/helm/chart
+
+    - task: HelmDeploy@0
+      displayName: Helm list - test
+      inputs:
+        connectionType: $(aksConnectionType)
+        azureSubscriptionEndpoint: $(aksSubscriptionEndpoint)
+        azureResourceGroup: $(azureResourceGroup)
+        kubernetesCluster: $(aksCluster)
+        useClusterAdmin: true
+        namespace: $(aksNamespace)
+        command: ls
+        arguments: --all
+
+    - task: DownloadSecureFile@1
+      name: gitCryptKey
+      displayName: 'Get git-crypt key'
+      inputs:
+        secureFile: 'git-crypt-key.txt'
+    - script: |
+        sudo apt-get install git-crypt
+        cat $(gitCryptKey.secureFilePath) | git-crypt unlock -
+
+    - task: HelmDeploy@0
+      displayName: Helm diff - test
+      inputs:
+        connectionType: $(aksConnectionType)
+        azureSubscriptionEndpoint: $(aksSubscriptionEndpoint)
+        azureResourceGroup: $(azureResourceGroup)
+        kubernetesCluster: $(aksCluster)
+        useClusterAdmin: true
+        namespace: $(aksNamespace)
+        command: diff
+        arguments: upgrade corona-dev ./backend/helm/chart -f ./backend/helm/config/common.yaml -f ./backend/helm/config/dev.yaml -f ./backend/helm/secrets/dev.yaml

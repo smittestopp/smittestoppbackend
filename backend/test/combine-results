@@ -1,0 +1,10 @@
+#!/bin/bash -e
+#
+# Device Registration Stresstest
+
+find -maxdepth 1 -name "results-*.data" | xargs -n1 | (
+   while read name ; do
+      echo "--values=\"${name}\""
+      echo "--input=${name}"
+   done
+) | combinesummaries results.data.bz2 SourceFile
